@@ -34,7 +34,7 @@ module.exports = function (context, myEventHubMessage) {
                 let options = {
                     url: 'https://api.twitter.com/1.1/search/tweets.json?count=3&q=%23' + myEventHubMessage.topic,
                     headers: {
-                        'Authorization': 'Bearer ' + '{twitter bearer token}'
+                        'Authorization': 'Bearer ' + process.env['TWITTER_TOKEN']
                     }
                 };
                 request(options, (error, response, body) => {
