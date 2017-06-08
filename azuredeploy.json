@@ -1,0 +1,162 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "iothubName": {
+            "type": "string"
+        },
+        "iotHubSku": {
+            "type": "string",
+            "allowedValues": [
+                "F1",
+                "S1",
+                "S2"
+            ],
+            "defaultValue": "F1"
+        },
+        "iotHubCapacity": {
+            "type": "int",
+            "minValue": 1,
+            "defaultValue": 1
+        }
+    },
+    "variables": {
+        "resourceLocation": "[resourceGroup().location]",
+        "siteName": "[concat('funcapp', uniquestring(resourceGroup().id))]",
+        "storageAccountName": "[concat('storage', uniquestring(resourceGroup().id))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Devices/IotHubs",
+            "sku": {
+                "name": "[parameters('iotHubSku')]",
+                "capacity": "[parameters('iotHubCapacity')]"
+            },
+            "name": "[parameters('iotHubName')]",
+            "apiVersion": "2016-02-03",
+            "location": "[variables('resourceLocation')]",
+            "tags": {},
+            "properties": {
+                "eventHubEndpoints": {
+                    "events": {
+                        "retentionTimeInDays": 1,
+                        "partitionCount": 2
+                    }
+                },
+                "enableFileUploadNotifications": false,
+                "features": "None"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[variables('storageAccountName')]",
+            "apiVersion": "2015-06-15",
+            "location": "[variables('resourceLocation')]",
+            "properties": {
+                "accountType": "Standard_LRS"
+            }
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y",
+                "capacity": 0
+            },
+            "kind": "functionapp",
+            "name": "[variables('siteName')]",
+            "apiVersion": "2015-08-01",
+            "location": "[variables('resourceLocation')]",
+            "properties": {
+                "name": "[variables('siteName')]",
+                "numberOfWorkers": 0
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "kind": "functionapp",
+            "name": "[variables('siteName')]",
+            "apiVersion": "2015-08-01",
+            "location": "[variables('resourceLocation')]",
+            "properties": {
+                "name": "[variables('siteName')]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('siteName'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~1"
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "6.5.0"
+                        },
+                        {
+                            "name": "iotHubConnectionString",
+                            "value": "[listKeys(resourceId('Microsoft.Devices/IotHubs/Iothubkeys', parameters('iotHubName'), 'iothubowner'), '2016-02-03').primaryKey]"
+                        }
+                    ]
+                },
+                "hostNames": [
+                    "[concat(variables('siteName'),'.azurewebsites.net')]"
+                ],
+                "enabledHostNames": [
+                    "[concat(variables('siteName'),'.azurewebsites.net')]",
+                    "[concat(variables('siteName'),'.scm.azurewebsites.net')]"
+                ],
+                "hostNameSslStates": [
+                    {
+                        "name": "[concat(variables('siteName'),'.azurewebsites.net')]",
+                        "sslState": 0,
+                        "thumbprint": null,
+                        "ipBasedSslState": 0
+                    },
+                    {
+                        "name": "[concat(variables('siteName'),'.scm.azurewebsites.net')]",
+                        "sslState": 0,
+                        "thumbprint": null,
+                        "ipBasedSslState": 0
+                    }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('siteName'))]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('siteName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.Devices/IotHubs', parameters('iotHubName'))]"
+            ],
+            "resources": [
+                {
+                    "apiVersion": "2015-08-01",
+                    "name": "web",
+                    "type": "sourcecontrols",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', variables('siteName'))]"
+                    ],
+                    "properties": {
+                        "RepoUrl": "https://github.com/Sneezry/Riki",
+                        "branch": "source",
+                        "IsManualIntegration": true
+                    }
+                }
+            ]
+        }
+    ]
+}
