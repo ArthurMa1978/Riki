@@ -114,7 +114,7 @@
                         },
                         {
                             "name": "eventHubConnectionString",
-                            "value": "[concat('Endpoint=', reference(resourceId('Microsoft.Devices/IoTHubs', parameters('iotHubName'))).eventHubEndpoints.events.endpoint,';SharedAccessKeyName=iothubowner;SharedAccessKey=', listKeys(resourceId('Microsoft.Devices/IotHubs', parameters('iotHubName'), 'iothubowner'),'2016-02-03').value[0].primaryKey)]"
+                            "value": "[concat('Endpoint=', reference(resourceId('Microsoft.Devices/IoTHubs', parameters('iotHubName'))).eventHubEndpoints.events.endpoint,';SharedAccessKeyName=iothubowner;SharedAccessKey=', listKeys(resourceId('Microsoft.Devices/IotHubs/Iothubkeys', parameters('iotHubName'), 'iothubowner'), '2016-02-03').primaryKey)]"
                         }
                     ]
                 },
